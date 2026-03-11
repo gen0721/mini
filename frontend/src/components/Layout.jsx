@@ -93,7 +93,7 @@ export default function Layout({ children }) {
                       <div onClick={e=>e.stopPropagation()} style={{
                         position:'absolute', top:'calc(100% + 8px)', right:0,
                         background:'var(--bg2)', border:'1px solid var(--border)',
-                        borderRadius:var(--r2), padding:8, minWidth:180,
+                        borderRadius:'var(--r2)', padding:8, minWidth:180,
                         boxShadow:'0 16px 48px rgba(0,0,0,0.6)', zIndex:51,
                         animation:'fadeUp 0.2s ease'
                       }}>
