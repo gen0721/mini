@@ -5,4 +5,4 @@ buildCommand = "cd frontend && npm install && npm run build && cd ../backend && 
 [deploy]
 startCommand = "node backend/server.js"
 healthcheckPath = "/"
-restartPolicyType = "on-failure"
+restartPolicyType = "ON_FAILURE"
