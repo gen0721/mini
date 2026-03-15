@@ -36,6 +36,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 CLAUDE_API_KEY     = os.getenv("CLAUDE_API_KEY", "")
 GEMINI_API_KEY     = os.getenv("GEMINI_API_KEY", "")
 DEEPSEEK_API_KEY   = os.getenv("DEEPSEEK_API_KEY", "")
+OPENAI_API_KEY     = os.getenv("OPENAI_API_KEY", "")
 WEBHOOK_URL        = os.getenv("WEBHOOK_URL", "")       # https://yourapp.railway.app
 PORT               = int(os.getenv("PORT", "8080"))
 ADMIN_IDS          = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
@@ -202,7 +203,27 @@ async def ask_deepseek(messages: list, system: str) -> str:
             return data["choices"][0]["message"]["content"]
 
 
-AI_MAP = {"claude": ask_claude, "gemini": ask_gemini, "deepseek": ask_deepseek}
+async def ask_gpt(messages: list, system: str) -> str:
+    if not OPENAI_API_KEY:
+        raise Exception("OPENAI_API_KEY не задан")
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "system", "content": system}] + messages,
+        "max_tokens": 600,
+    }
+    async with aiohttp.ClientSession() as s:
+        async with s.post("https://api.openai.com/v1/chat/completions", json=body, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as r:
+            data = await r.json()
+            if r.status != 200:
+                raise Exception(f"GPT {r.status}: {data.get('error', {}).get('message', data)}")
+            return data["choices"][0]["message"]["content"]
+
+
+AI_MAP = {"claude": ask_claude, "gemini": ask_gemini, "deepseek": ask_deepseek, "gpt": ask_gpt}
 
 async def ai_request(question: str, system: str = None, chat_id: int = None, use_memory: bool = True) -> str:
     """Универсальный запрос к активному ИИ с памятью"""
@@ -398,7 +419,7 @@ async def cmd_ai(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     ai = ctx.args[0].lower()
     if ai not in AI_MAP:
-        await update.message.reply_text("некорректно. claude, gemini или deepseek")
+        await update.message.reply_text("некорректно. claude, gemini, deepseek или gpt")
         return
     config["active_ai"] = ai
     save_config(config)
@@ -406,6 +427,7 @@ async def cmd_ai(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "claude":   "переключился на *Claude* — умный зазнайка 🧠",
         "gemini":   "переключился на *Gemini* — гугловский красавчик ✨",
         "deepseek": "переключился на *DeepSeek* — загадочный тип 🔮",
+        "gpt":      "переключился на *GPT-4o mini* — классика от OpenAI 🤖",
     }
     await update.message.reply_text(desc[ai], parse_mode="Markdown")
 
@@ -541,7 +563,8 @@ async def cmd_stats(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"Всего: *{total}* — {comment}\n"
         f"🧠 Claude: {s.get('claude', 0)}\n"
         f"✨ Gemini: {s.get('gemini', 0)}\n"
-        f"🔮 DeepSeek: {s.get('deepseek', 0)}",
+        f"🔮 DeepSeek: {s.get('deepseek', 0)}\n"
+        f"🤖 GPT: {s.get('gpt', 0)}",
         parse_mode="Markdown"
     )
 
@@ -583,13 +606,15 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "claude":   "✅" if CLAUDE_API_KEY else "❌",
         "gemini":   "✅" if GEMINI_API_KEY else "❌",
         "deepseek": "✅" if DEEPSEEK_API_KEY else "❌",
+        "gpt":      "✅" if OPENAI_API_KEY else "❌",
     }
     await update.message.reply_text(
         f"*🔧 Статус бота*\n\n"
         f"Активный ИИ: *{config['active_ai']}*\n"
         f"🧠 Claude API: {ai_keys['claude']}\n"
         f"✨ Gemini API: {ai_keys['gemini']}\n"
-        f"🔮 DeepSeek API: {ai_keys['deepseek']}\n\n"
+        f"🔮 DeepSeek API: {ai_keys['deepseek']}\n"
+        f"🤖 GPT API: {ai_keys['gpt']}\n\n"
         f"Триггер: `{config['trigger']}`\n"
         f"Память: {'✅' if config.get('memory_on') else '❌'} (глубина: {config.get('memory_depth', 8)})\n"
         f"Реакции: {'✅' if config.get('react_on') else '❌'}\n"
