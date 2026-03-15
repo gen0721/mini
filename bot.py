@@ -38,6 +38,7 @@ GEMINI_API_KEY     = os.getenv("GEMINI_API_KEY", "")
 DEEPSEEK_API_KEY   = os.getenv("DEEPSEEK_API_KEY", "")
 OPENAI_API_KEY     = os.getenv("OPENAI_API_KEY", "")
 GROQ_API_KEY       = os.getenv("GROQ_API_KEY", "")
+COHERE_API_KEY     = os.getenv("COHERE_API_KEY", "")
 WEBHOOK_URL        = os.getenv("WEBHOOK_URL", "")       # https://yourapp.railway.app
 PORT               = int(os.getenv("PORT", "8080"))
 ADMIN_IDS          = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
@@ -244,7 +245,35 @@ async def ask_groq(messages: list, system: str) -> str:
             return data["choices"][0]["message"]["content"]
 
 
-AI_MAP = {"claude": ask_claude, "gemini": ask_gemini, "deepseek": ask_deepseek, "gpt": ask_gpt, "groq": ask_groq}
+async def ask_cohere(messages: list, system: str) -> str:
+    if not COHERE_API_KEY:
+        raise Exception("COHERE_API_KEY не задан")
+    headers = {
+        "Authorization": f"Bearer {COHERE_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    # Конвертируем историю в формат Cohere
+    chat_history = []
+    for m in messages[:-1]:
+        role = "USER" if m["role"] == "user" else "CHATBOT"
+        chat_history.append({"role": role, "message": m["content"]})
+    last_message = messages[-1]["content"] if messages else "привет"
+    body = {
+        "model": "command-r-plus",
+        "message": last_message,
+        "preamble": system,
+        "chat_history": chat_history,
+        "max_tokens": 600,
+    }
+    async with aiohttp.ClientSession() as s:
+        async with s.post("https://api.cohere.com/v1/chat", json=body, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as r:
+            data = await r.json()
+            if r.status != 200:
+                raise Exception(f"Cohere {r.status}: {data.get('message', data)}")
+            return data["text"]
+
+
+AI_MAP = {"claude": ask_claude, "gemini": ask_gemini, "deepseek": ask_deepseek, "gpt": ask_gpt, "groq": ask_groq, "cohere": ask_cohere}
 
 async def ai_request(question: str, system: str = None, chat_id: int = None, use_memory: bool = True) -> str:
     """Универсальный запрос к активному ИИ с памятью"""
@@ -440,7 +469,7 @@ async def cmd_ai(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     ai = ctx.args[0].lower()
     if ai not in AI_MAP:
-        await update.message.reply_text("некорректно. claude, gemini, deepseek, gpt или groq")
+        await update.message.reply_text("некорректно. claude, gemini, deepseek, gpt, groq или cohere")
         return
     config["active_ai"] = ai
     save_config(config)
@@ -450,6 +479,7 @@ async def cmd_ai(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "deepseek": "переключился на *DeepSeek* — загадочный тип 🔮",
         "gpt":      "переключился на *GPT-4o mini* — классика от OpenAI 🤖",
         "groq":     "переключился на *Groq (Llama 3.3)* — бесплатный и быстрый 🆓",
+        "cohere":   "переключился на *Cohere Command R+* — бесплатный красавчик 🆓",
     }
     await update.message.reply_text(desc[ai], parse_mode="Markdown")
 
@@ -630,6 +660,7 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "deepseek": "✅" if DEEPSEEK_API_KEY else "❌",
         "gpt":      "✅" if OPENAI_API_KEY else "❌",
         "groq":     "✅" if GROQ_API_KEY else "❌",
+        "cohere":   "✅" if COHERE_API_KEY else "❌",
     }
     await update.message.reply_text(
         f"*🔧 Статус бота*\n\n"
@@ -638,7 +669,8 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"✨ Gemini API: {ai_keys['gemini']}\n"
         f"🔮 DeepSeek API: {ai_keys['deepseek']}\n"
         f"🤖 GPT API: {ai_keys['gpt']}\n"
-        f"🆓 Groq API: {ai_keys['groq']}\n\n"
+        f"🆓 Groq API: {ai_keys['groq']}\n"
+        f"🆓 Cohere API: {ai_keys['cohere']}\n\n"
         f"Триггер: `{config['trigger']}`\n"
         f"Память: {'✅' if config.get('memory_on') else '❌'} (глубина: {config.get('memory_depth', 8)})\n"
         f"Реакции: {'✅' if config.get('react_on') else '❌'}\n"
