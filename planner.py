@@ -1,12 +1,7 @@
-import asyncio
+from tasks import get_tasks
 
-tasks = []
-
-async def add_task(text):
-    tasks.append(text)
-
-async def run_tasks():
-    while True:
-        if tasks:
-            print("Выполняю:", tasks.pop(0))
-        await asyncio.sleep(10)
+async def analyze_tasks():
+    tasks = await get_tasks()
+    if tasks:
+        return f"У тебя {len(tasks)} задач"
+    return None
