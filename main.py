@@ -1,6 +1,6 @@
 import asyncio
 
-from memory import init_db
+from database import init_db
 from userbot import start_userbot
 from control_bot import start_bot
 from agent import start_agent
