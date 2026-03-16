@@ -1,13 +1,12 @@
-from telethon import TelegramClient, events
-from telethon.sessions import StringSession
+from pyrogram import Client, filters
 from config import API_ID, API_HASH, SESSION_STRING
 
-client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
+client = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
-@client.on(events.NewMessage)
-async def handler(event):
-    if "агент" in event.raw_text.lower():
-        await event.reply("Я здесь 🤖")
+@client.on_message(filters.text)
+async def handler(c, message):
+    if "агент" in message.text.lower():
+        await message.reply("Я здесь 🤖")
 
 async def start_userbot():
     await client.start()
