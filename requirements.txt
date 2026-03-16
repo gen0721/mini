@@ -1,7 +1,5 @@
 telethon
 python-telegram-bot==21.6
 asyncpg
-sqlalchemy
-psycopg2-binary
 aiohttp
 python-dotenv
