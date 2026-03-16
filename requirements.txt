@@ -1,4 +1,7 @@
-python-telegram-bot[webhooks]==21.6
-pyrogram==2.0.106
-TgCrypto==1.2.5
-aiohttp==3.9.5
+telethon
+python-telegram-bot==21.6
+asyncpg
+sqlalchemy
+psycopg2-binary
+aiohttp
+python-dotenv
