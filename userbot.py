@@ -1,7 +1,8 @@
 from telethon import TelegramClient, events
-from config import API_ID, API_HASH
+from telethon.sessions import StringSession
+from config import API_ID, API_HASH, SESSION_STRING
 
-client = TelegramClient("userbot", API_ID, API_HASH)
+client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
 @client.on(events.NewMessage)
 async def handler(event):
