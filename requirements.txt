@@ -1,5 +1,6 @@
-telethon
+pyrogram
 python-telegram-bot==21.6
 asyncpg
 aiohttp
 python-dotenv
+tgcrypto
